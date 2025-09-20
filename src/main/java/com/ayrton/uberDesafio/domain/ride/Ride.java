@@ -36,5 +36,8 @@ public class Ride {
     private LocalDateTime startedAt;
     private LocalDateTime completedAt;
 
+    private LocalDateTime canceledAt;
+    private String cancelReason;
+
 
 }

@@ -7,6 +7,7 @@ import com.ayrton.uberDesafio.domain.ride.RideStatus;
 import com.ayrton.uberDesafio.domain.user.User;
 import com.ayrton.uberDesafio.dto.RideRequest;
 import com.ayrton.uberDesafio.repository.RideRepository;
+import com.ayrton.uberDesafio.utils.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -44,8 +45,6 @@ public class RideService {
             throw new IllegalStateException("Não pode solicitar uma viagem");
         }
 
-        passenger.setNumberRaces(passenger.getNumberRaces() + 1);
-        driver.setNumberRaces(driver.getNumberRaces() + 1);
 
         Ride newRide = new Ride();
         newRide.setPassenger(passenger);
@@ -59,11 +58,58 @@ public class RideService {
         newRide.setRequestedAt(LocalDateTime.now());
 
         this.rideRepository.save(newRide);
-        this.driverService.saveDriver(driver);
-        this.userService.saveUser(passenger);
 
         return newRide;
 
+    }
+
+    public Ride cancelRide(String rideId, String reason, User requester){
+        Ride ride = rideRepository.findById(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Corrida não encontrada"));
+
+        if (ride.getRideStatus() == RideStatus.COMPLETED) {
+            throw new IllegalStateException("Não é possível cancelar uma corrida já finalizada");
+        }
+        if (ride.getRideStatus() == RideStatus.CANCELED) {
+            return ride;
+        }
+
+
+        ride.setRideStatus(RideStatus.CANCELED);
+        ride.setCanceledAt(LocalDateTime.now());
+        ride.setCancelReason(reason);
+
+        return rideRepository.save(ride);
+    }
+
+    public Ride completeRace(String rideId){
+        Ride ride = rideRepository.findById(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Corrida não encontrada"));
+
+
+
+        if (ride.getRideStatus() == RideStatus.CANCELED) {
+            throw new IllegalStateException("Não é possível completar uma corrida cancelada");
+        }
+
+        if (ride.getRideStatus() == RideStatus.COMPLETED) {
+            return ride;
+        }
+
+        User passenger = ride.getPassenger();
+        passenger.setNumberRaces(passenger.getNumberRaces() + 1);
+
+        Driver driver = ride.getDriver();
+        driver.setNumberRaces(driver.getNumberRaces() + 1);
+
+        ride.setRideStatus(RideStatus.COMPLETED);
+        ride.setCompletedAt(LocalDateTime.now());
+
+        this.rideRepository.save(ride);
+        this.driverService.saveDriver(driver);
+        this.userService.saveUser(passenger);
+
+        return rideRepository.save(ride);
     }
 
 
