@@ -26,44 +26,65 @@ public class RideService {
     private DriverService driverService;
 
 
-
-    public boolean authorizeRide(User passenger, Driver driver) {
-        return passenger.getStatus() == User.Status.ACTIVE
-                && driver.getDriverStatus() == DriverStatus.AVAILABLE;
+    public boolean authorizeRideRequest(User passenger) {
+        return passenger.getStatus() == User.Status.ACTIVE;
     }
+
+
+    public boolean authorizeRideAcceptance(Driver driver) {
+        return driver.getDriverStatus() == DriverStatus.AVAILABLE;
+    }
+
 
     public Ride createRide(RideRequest rideRequest) {
         User passenger = userService.getById(rideRequest.passengerId())
                 .orElseThrow(() -> new IllegalArgumentException("Passageiro não encontrado"));
 
-        Driver driver = driverService.getById(rideRequest.driverId())
-                .orElseThrow(() -> new IllegalArgumentException("Motorista não encontrado"));
-
-        boolean authorized = this.authorizeRide(passenger, driver);
-
-        if (!authorized) {
-            throw new IllegalStateException("Não pode solicitar uma viagem");
+        if (!authorizeRideRequest(passenger)) {
+            throw new IllegalStateException("Passageiro não está ativo para solicitar corrida");
         }
-
 
         Ride newRide = new Ride();
         newRide.setPassenger(passenger);
-        newRide.setDriver(driver);
         newRide.setOriginLat(rideRequest.originLat());
         newRide.setOriginLng(rideRequest.originLng());
         newRide.setDestinationLat(rideRequest.destinationLat());
         newRide.setDestinationLng(rideRequest.destinationLng());
-        newRide.setRideStatus(RideStatus.REQUESTED);
         newRide.setPrice(rideRequest.price());
+        newRide.setRideStatus(RideStatus.REQUESTED);
         newRide.setRequestedAt(LocalDateTime.now());
 
-        this.rideRepository.save(newRide);
-
-        return newRide;
-
+        return rideRepository.save(newRide);
     }
 
-    public Ride cancelRide(String rideId, String reason, User requester){
+
+    public Ride acceptRide(String rideId, String driverId) {
+        Ride ride = rideRepository.findById(rideId)
+                .orElseThrow(() -> new ResourceNotFoundException("Corrida não encontrada"));
+
+        if (ride.getRideStatus() != RideStatus.REQUESTED) {
+            throw new IllegalStateException("A corrida não está mais disponível para aceitação");
+        }
+
+        Driver driver = driverService.getById(driverId)
+                .orElseThrow(() -> new ResourceNotFoundException("Motorista não encontrado"));
+
+        if (!authorizeRideAcceptance(driver)) {
+            throw new IllegalStateException("Motorista não está disponível para aceitar corridas");
+        }
+
+        ride.setDriver(driver);
+        ride.setRideStatus(RideStatus.ONGOING);
+        ride.setAcceptedAt(LocalDateTime.now());
+
+        driver.setDriverStatus(DriverStatus.ON_RIDE);
+        driverService.saveDriver(driver);
+
+        return rideRepository.save(ride);
+    }
+
+
+    public Ride cancelRide(String rideId, String reason, User requester) {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new ResourceNotFoundException("Corrida não encontrada"));
 
@@ -74,7 +95,6 @@ public class RideService {
             return ride;
         }
 
-
         ride.setRideStatus(RideStatus.CANCELED);
         ride.setCanceledAt(LocalDateTime.now());
         ride.setCancelReason(reason);
@@ -82,11 +102,10 @@ public class RideService {
         return rideRepository.save(ride);
     }
 
-    public Ride completeRace(String rideId){
+
+    public Ride completeRace(String rideId) {
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new ResourceNotFoundException("Corrida não encontrada"));
-
-
 
         if (ride.getRideStatus() == RideStatus.CANCELED) {
             throw new IllegalStateException("Não é possível completar uma corrida cancelada");
@@ -105,12 +124,13 @@ public class RideService {
         ride.setRideStatus(RideStatus.COMPLETED);
         ride.setCompletedAt(LocalDateTime.now());
 
+
+        driver.setDriverStatus(DriverStatus.AVAILABLE);
+
         this.rideRepository.save(ride);
         this.driverService.saveDriver(driver);
         this.userService.saveUser(passenger);
 
         return rideRepository.save(ride);
     }
-
-
 }

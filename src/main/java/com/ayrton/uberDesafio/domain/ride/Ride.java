@@ -38,6 +38,7 @@ public class Ride {
 
     private LocalDateTime canceledAt;
     private String cancelReason;
+    private LocalDateTime acceptedAt;
 
 
 }
