@@ -1,11 +1,15 @@
 package com.ayrton.uberDesafio.service;
 
 import com.ayrton.uberDesafio.domain.driver.Driver;
+import com.ayrton.uberDesafio.domain.driver.VehicleType;
+import com.ayrton.uberDesafio.domain.user.UserSex;
 import com.ayrton.uberDesafio.dto.DriverRequest;
 import com.ayrton.uberDesafio.repository.DriverRepository;
+import com.ayrton.uberDesafio.utils.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -37,5 +41,42 @@ public class DriverService {
         driver.setVehicleType(driverRequest.vehicleType());
 
         return driverRepository.save(driver);
+    }
+
+
+    public List<Driver> getAllDrivers() throws ResourceNotFoundException{
+        List<Driver> drivers = driverRepository.findAll();
+
+        if (drivers.isEmpty()){
+            throw new ResourceNotFoundException("Nenhum motorista encontrado");
+        }
+        return drivers;
+    }
+
+    public List<Driver> getByName(String fullName) throws  ResourceNotFoundException{
+        List<Driver> drivers = driverRepository.findByFullNameContainIgnoreCase(fullName);
+
+        if (drivers.isEmpty()){
+            throw  new ResourceNotFoundException("Nenhum motorista encontrado");
+        }
+        return  drivers;
+    }
+
+    public List<Driver> getByVehicleType(VehicleType vehicleType) throws ResourceNotFoundException{
+        List<Driver> drivers = driverRepository.findByVehicleType(vehicleType);
+
+        if (drivers.isEmpty()){
+            throw new ResourceNotFoundException("Nenhum motorista encontrado");
+        }
+        return drivers;
+    }
+
+    public List<Driver> getByDriverSex(UserSex userSex) throws  ResourceNotFoundException{
+        List<Driver> drivers = driverRepository.findByUserSex(userSex);
+
+        if (drivers.isEmpty()){
+            throw new ResourceNotFoundException("Nenhum motorista encontrado");
+        }
+        return drivers;
     }
 }
