@@ -1,6 +1,7 @@
 package com.ayrton.uberDesafio.service;
 
 import com.ayrton.uberDesafio.domain.driver.Driver;
+import com.ayrton.uberDesafio.domain.driver.DriverStatus;
 import com.ayrton.uberDesafio.domain.driver.VehicleType;
 import com.ayrton.uberDesafio.domain.user.UserSex;
 import com.ayrton.uberDesafio.dto.DriverRequest;
@@ -54,7 +55,7 @@ public class DriverService {
     }
 
     public List<Driver> getByName(String fullName) throws  ResourceNotFoundException{
-        List<Driver> drivers = driverRepository.findByFullNameContainIgnoreCase(fullName);
+        List<Driver> drivers = driverRepository.findByFullNameContainsIgnoreCase(fullName);
 
         if (drivers.isEmpty()){
             throw  new ResourceNotFoundException("Nenhum motorista encontrado");
@@ -73,6 +74,15 @@ public class DriverService {
 
     public List<Driver> getByDriverSex(UserSex userSex) throws  ResourceNotFoundException{
         List<Driver> drivers = driverRepository.findByUserSex(userSex);
+
+        if (drivers.isEmpty()){
+            throw new ResourceNotFoundException("Nenhum motorista encontrado");
+        }
+        return drivers;
+    }
+
+    public List<Driver> getByStatus(DriverStatus driverStatus)throws ResourceNotFoundException{
+        List<Driver> drivers = driverRepository.findByDriverStatus(driverStatus);
 
         if (drivers.isEmpty()){
             throw new ResourceNotFoundException("Nenhum motorista encontrado");

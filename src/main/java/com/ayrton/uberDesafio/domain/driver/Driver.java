@@ -28,6 +28,9 @@ public class Driver {
     private String vehicleRegistration;
     private VehicleType vehicleType;
 
+    private double currentLat;
+    private  double currentLng;
+
     private DriverStatus driverStatus;
 
 }

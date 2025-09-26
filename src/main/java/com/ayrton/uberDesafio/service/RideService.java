@@ -7,11 +7,13 @@ import com.ayrton.uberDesafio.domain.ride.RideStatus;
 import com.ayrton.uberDesafio.domain.user.User;
 import com.ayrton.uberDesafio.dto.RideRequest;
 import com.ayrton.uberDesafio.repository.RideRepository;
+import com.ayrton.uberDesafio.utils.GeoUtils;
 import com.ayrton.uberDesafio.utils.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class RideService {
@@ -58,11 +60,11 @@ public class RideService {
     }
 
 
-    public Ride acceptRide(String rideId, String driverId) {
+    public Ride acceptRide(String rideId, String driverId){
         Ride ride = rideRepository.findById(rideId)
-                .orElseThrow(() -> new ResourceNotFoundException("Corrida não encontrada"));
+                .orElseThrow(()-> new ResourceNotFoundException("Corrida nao encontrada"));
 
-        if (ride.getRideStatus() != RideStatus.REQUESTED) {
+        if (ride.getRideStatus() != RideStatus.REQUESTED){
             throw new IllegalStateException("A corrida não está mais disponível para aceitação");
         }
 
@@ -73,16 +75,31 @@ public class RideService {
             throw new IllegalStateException("Motorista não está disponível para aceitar corridas");
         }
 
+
+        if (!GeoUtils.isWithin5Km(
+                ride.getOriginLat(), ride.getOriginLng(),
+                driver.getCurrentLat(), driver.getCurrentLng() // Assumindo campos de localização no Driver
+        )) {
+            throw new IllegalStateException("Motorista está muito distante da origem da corrida (mais de 5km)");
+        }
+
         ride.setDriver(driver);
         ride.setRideStatus(RideStatus.ONGOING);
         ride.setAcceptedAt(LocalDateTime.now());
-
         driver.setDriverStatus(DriverStatus.ON_RIDE);
         driverService.saveDriver(driver);
-
         return rideRepository.save(ride);
     }
 
+    public List<Driver> findNearbyDrivers(double originLat, double originLng) {
+        List<Driver> availableDrivers = driverService.getByStatus(DriverStatus.AVAILABLE);
+        return availableDrivers.stream()
+                .filter(driver -> GeoUtils.isWithin5Km(
+                        originLat, originLng,
+                        driver.getCurrentLat(), driver.getCurrentLng()
+                ))
+                .toList();
+    }
 
     public Ride cancelRide(String rideId, String reason, User requester) {
         Ride ride = rideRepository.findById(rideId)
@@ -127,7 +144,6 @@ public class RideService {
 
         driver.setDriverStatus(DriverStatus.AVAILABLE);
 
-        this.rideRepository.save(ride);
         this.driverService.saveDriver(driver);
         this.userService.saveUser(passenger);
 

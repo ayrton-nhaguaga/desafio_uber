@@ -1,6 +1,5 @@
 package com.ayrton.uberDesafio.dto;
 
-import com.ayrton.uberDesafio.domain.ride.Ride;
 import com.ayrton.uberDesafio.domain.ride.RideStatus;
 
 import java.time.LocalDateTime;
